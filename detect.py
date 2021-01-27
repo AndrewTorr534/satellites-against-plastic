@@ -1,6 +1,6 @@
 from google.cloud import vision
 import os
-import cv2
+import json
 
 
 def localize_objects(path):
@@ -12,32 +12,20 @@ def localize_objects(path):
 
     client = vision.ImageAnnotatorClient()
 
+    image_name = path.split('/')[-1].split('.')[0]
+    path_to_file = "/".join(path.split('/')[:-1])
+
     with open(path, 'rb') as image_file:
         content = image_file.read()
-    img = cv2.imread(path)
 
     image = vision.Image(content=content)
     objects = client.object_localization(
         image=image).localized_object_annotations
 
-    print('Number of objects found: {}'.format(len(objects)))
-    
-    vertexes = []
     if len(objects) != 0:
-        for object_ in objects:
-            print('\n{} (confidence: {})'.format(object_.name, object_.score))
-            print('Normalized bounding polygon vertices: ')
-            for vertex in object_.bounding_poly.normalized_vertices:
-                print(' - ({}, {})'.format(vertex.x, vertex.y))
-                vertexes.append((int(vertex.x * img.shape[1]), int(vertex.y * img.shape[0])))
-
-        for _ in range(len(objects)):
-            cv2.rectangle(img, vertexes[_*4], vertexes[_*4+2], (0,0,255), 2)
-
-        
-        cv2.imshow("img", img)
-        cv2.waitKey(10000)
-        cv2.destroyAllWindows()
+        for idx, object_ in enumerate(objects):
+            with open(f"{path_to_file}/{image_name}_{idx}.json", "w") as out_file:
+                json.dump(str(object_), out_file, indent=6)
 
 
 if __name__ == "__main__":
